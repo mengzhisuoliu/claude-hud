@@ -99,8 +99,10 @@ test('writeExternalUsageSnapshot writes stdin rate limits to the configured path
   try {
     const wrote = writeExternalUsageSnapshot(makeWriteConfig(filePath), usage, now);
     const snapshot = JSON.parse(await readFile(filePath, 'utf8'));
+    const fileMode = (await stat(filePath)).mode & 0o777;
 
     assert.equal(wrote, true);
+    assert.equal(fileMode, 0o600);
     assert.deepEqual(snapshot, {
       updated_at: new Date(now).toISOString(),
       five_hour: {
@@ -149,6 +151,84 @@ test('writeExternalUsageSnapshot is a no-op without a configured write path', as
   }
 });
 
+test('writeExternalUsageSnapshot ignores relative write paths', () => {
+  const throwingDeps = {
+    chmodSync: () => {
+      throw new Error('unexpected chmod');
+    },
+    existsSync: () => {
+      throw new Error('unexpected exists');
+    },
+    readFileSync: () => {
+      throw new Error('unexpected read');
+    },
+    renameSync: () => {
+      throw new Error('unexpected rename');
+    },
+    rmSync: () => {
+      throw new Error('unexpected rm');
+    },
+    statSync: () => {
+      throw new Error('unexpected stat');
+    },
+    writeFileSync: () => {
+      throw new Error('unexpected write');
+    },
+  };
+
+  assert.equal(
+    writeExternalUsageSnapshot(makeWriteConfig('usage.json'), makeUsage(), Date.now(), throwingDeps),
+    false,
+  );
+});
+
+test('writeExternalUsageSnapshot ignores non-json write paths', () => {
+  const throwingDeps = {
+    chmodSync: () => {
+      throw new Error('unexpected chmod');
+    },
+    existsSync: () => {
+      throw new Error('unexpected exists');
+    },
+    readFileSync: () => {
+      throw new Error('unexpected read');
+    },
+    renameSync: () => {
+      throw new Error('unexpected rename');
+    },
+    rmSync: () => {
+      throw new Error('unexpected rm');
+    },
+    statSync: () => {
+      throw new Error('unexpected stat');
+    },
+    writeFileSync: () => {
+      throw new Error('unexpected write');
+    },
+  };
+
+  assert.equal(
+    writeExternalUsageSnapshot(makeWriteConfig(path.join(tmpdir(), 'usage.txt')), makeUsage(), Date.now(), throwingDeps),
+    false,
+  );
+});
+
+test('writeExternalUsageSnapshot does not create missing parent directories', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'claude-hud-external-usage-write-'));
+  const missingDir = path.join(dir, 'missing');
+  const filePath = path.join(missingDir, 'usage.json');
+
+  try {
+    const wrote = writeExternalUsageSnapshot(makeWriteConfig(filePath), makeUsage(), Date.now());
+
+    assert.equal(wrote, false);
+    assert.equal(await pathExists(missingDir), false);
+    assert.equal(await pathExists(filePath), false);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('writeExternalUsageSnapshot is a no-op without parsed stdin rate limits', async () => {
   const dir = await mkdtemp(path.join(tmpdir(), 'claude-hud-external-usage-write-'));
   const filePath = path.join(dir, 'usage.json');
@@ -171,8 +251,8 @@ test('writeExternalUsageSnapshot removes temp files when atomic rename fails', a
   const dir = await mkdtemp(path.join(tmpdir(), 'claude-hud-external-usage-write-'));
   const filePath = path.join(dir, 'usage.json');
   const deps = {
+    chmodSync: fs.chmodSync,
     existsSync: fs.existsSync,
-    mkdirSync: fs.mkdirSync,
     readFileSync: fs.readFileSync,
     renameSync: () => {
       throw new Error('rename failed');

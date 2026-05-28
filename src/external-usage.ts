@@ -19,8 +19,8 @@ type ExternalUsageWriteSnapshot = {
 };
 
 type FileSystemDeps = {
+  chmodSync: typeof fs.chmodSync;
   existsSync: typeof fs.existsSync;
-  mkdirSync: typeof fs.mkdirSync;
   readFileSync: typeof fs.readFileSync;
   renameSync: typeof fs.renameSync;
   rmSync: typeof fs.rmSync;
@@ -29,8 +29,8 @@ type FileSystemDeps = {
 };
 
 const fsDeps: FileSystemDeps = {
+  chmodSync: fs.chmodSync,
   existsSync: fs.existsSync,
-  mkdirSync: fs.mkdirSync,
   readFileSync: fs.readFileSync,
   renameSync: fs.renameSync,
   rmSync: fs.rmSync,
@@ -192,13 +192,34 @@ function shouldWriteSnapshot(
   }
 }
 
+function resolveSnapshotWritePath(snapshotPath: string): string | null {
+  if (!path.isAbsolute(snapshotPath)) {
+    return null;
+  }
+
+  const parsed = path.parse(snapshotPath);
+  if (!parsed.base || parsed.ext.toLowerCase() !== '.json') {
+    return null;
+  }
+
+  return path.normalize(snapshotPath);
+}
+
+function directoryExists(dir: string, deps: FileSystemDeps): boolean {
+  try {
+    return deps.statSync(dir).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
 export function writeExternalUsageSnapshot(
   config: HudConfig,
   usage: UsageData | null,
   now = Date.now(),
   deps: FileSystemDeps = fsDeps,
 ): boolean {
-  const snapshotPath = config.display.externalUsageWritePath;
+  const snapshotPath = resolveSnapshotWritePath(config.display.externalUsageWritePath);
   if (!snapshotPath || !usage) {
     return false;
   }
@@ -212,13 +233,21 @@ export function writeExternalUsageSnapshot(
   );
 
   try {
+    if (!directoryExists(dir, deps)) {
+      return false;
+    }
+
     if (!shouldWriteSnapshot(snapshotPath, snapshot, now, deps)) {
       return false;
     }
 
-    deps.mkdirSync(dir, { recursive: true });
-    deps.writeFileSync(tmpPath, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8');
+    deps.writeFileSync(tmpPath, `${JSON.stringify(snapshot, null, 2)}\n`, {
+      encoding: 'utf8',
+      mode: 0o600,
+      flag: 'wx',
+    });
     deps.renameSync(tmpPath, snapshotPath);
+    deps.chmodSync(snapshotPath, 0o600);
     return true;
   } catch {
     try {
