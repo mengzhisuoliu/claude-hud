@@ -14,6 +14,13 @@ export type GitBranchOverflowMode = 'truncate' | 'wrap';
 export type ModelFormatMode = 'full' | 'compact' | 'short';
 export type TimeFormatMode = 'relative' | 'absolute' | 'both' | 'elapsed' | 'elapsedAndAbsolute';
 export type CustomLinePosition = 'first' | 'last';
+/**
+ * Controls how many directory segments of cwd are shown in the project badge.
+ *
+ *   1 | 2 | 3: Show the last N segments (e.g. 2 -> "ai_workspace/knowledge-forge")
+ *   'full':    Show the entire absolute path from root (e.g. "/Users/name/…")
+ */
+export type PathLevels = 1 | 2 | 3 | 'full';
 export type HudElement = 'project' | 'addedDirs' | 'context' | 'usage' | 'promptCache' | 'memory' | 'environment' | 'tools' | 'skills' | 'mcp' | 'agents' | 'todos' | 'sessionTime';
 export type AddedDirsLayout = 'inline' | 'line';
 export type HudColorName = 'dim' | 'red' | 'green' | 'yellow' | 'magenta' | 'cyan' | 'brightBlue' | 'brightMagenta';
@@ -40,7 +47,7 @@ export interface HudConfig {
     language: Language;
     lineLayout: LineLayoutType;
     showSeparators: boolean;
-    pathLevels: 1 | 2 | 3;
+    pathLevels: PathLevels;
     maxWidth: number | null;
     forceMaxWidth: boolean;
     elementOrder: HudElement[];

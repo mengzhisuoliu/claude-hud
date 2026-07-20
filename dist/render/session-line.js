@@ -15,6 +15,7 @@ import { createDebug } from '../debug.js';
 import { formatModelDisplay } from './model-display.js';
 import { formatSessionTokenSummary } from './lines/session-tokens.js';
 import { sanitizeDisplayText } from '../utils/sanitize.js';
+import { formatProjectPath } from './project-path.js';
 const debug = createDebug('session-line');
 /**
  * Renders the full session line (model + context bar + project + git + counts + usage + duration).
@@ -66,12 +67,8 @@ export function renderSessionLine(ctx) {
     // Project path + git status
     let projectPart = null;
     if (display?.showProject !== false && ctx.stdin.cwd) {
-        // Split by both Unix (/) and Windows (\) separators for cross-platform support
-        const segments = ctx.stdin.cwd.split(/[/\\]/).filter(Boolean);
         const pathLevels = ctx.config?.pathLevels ?? 1;
-        // Always join with forward slash for consistent display
-        // Handle root path (/) which results in empty segments
-        const projectPath = segments.length > 0 ? segments.slice(-pathLevels).join('/') : '/';
+        const projectPath = formatProjectPath(ctx.stdin.cwd, pathLevels);
         projectPart = projectColor(projectPath, colors);
     }
     let gitPart = '';

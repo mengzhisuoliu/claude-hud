@@ -122,7 +122,7 @@ export function getConfigPath() {
     return path.join(getHudPluginDir(homeDir), 'config.json');
 }
 function validatePathLevels(value) {
-    return value === 1 || value === 2 || value === 3;
+    return value === 1 || value === 2 || value === 3 || value === 'full';
 }
 function validateLineLayout(value) {
     return value === 'compact' || value === 'expanded';
@@ -267,7 +267,7 @@ function migrateConfig(userConfig) {
                 migrated.lineLayout = obj.lineLayout;
             if (typeof obj.showSeparators === 'boolean')
                 migrated.showSeparators = obj.showSeparators;
-            if (typeof obj.pathLevels === 'number')
+            if (typeof obj.pathLevels === 'number' || obj.pathLevels === 'full')
                 migrated.pathLevels = obj.pathLevels;
         }
         delete migrated.layout;
